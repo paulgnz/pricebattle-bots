@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files - NEVER COMMIT THESE
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Private keys - NEVER COMMIT
+*.pem
+*.key
+*private*key*
+
+# Database
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# Logs
+*.log
+logs/*
+!logs/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
