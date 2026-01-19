@@ -104,13 +104,14 @@ export class AggressiveStrategy implements TradingStrategy {
         this.lastCreateTime = now;
       }
     } else if (!cooldownOk) {
-      this.logger?.debug('Skipping create - cooldown active', {
+      this.logger?.info('Skipping create - cooldown active', {
         secondsRemaining: Math.ceil((this.CREATE_COOLDOWN_MS - (now - this.lastCreateTime)) / 1000),
       });
     } else if (totalOurChallenges >= this.config.risk.maxConcurrentChallenges) {
-      this.logger?.debug('Skipping create - max challenges reached', {
+      this.logger?.info('Skipping create - at max challenges', {
         active: activeCount,
         open: ourOpenCount,
+        total: totalOurChallenges,
         max: this.config.risk.maxConcurrentChallenges,
       });
     }
