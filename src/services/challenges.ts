@@ -37,13 +37,15 @@ export class ChallengeService {
 
   /**
    * Get all challenges from blockchain
+   * Uses reverse order to get most recent challenges first
    */
-  async getAllChallenges(limit: number = 100): Promise<Challenge[]> {
+  async getAllChallenges(limit: number = 200): Promise<Challenge[]> {
     return this.rpc.getTableRows<Challenge>({
       scope: 'pricebattle',
       code: 'pricebattle',
       table: 'challenges',
       limit,
+      reverse: true,
     });
   }
 

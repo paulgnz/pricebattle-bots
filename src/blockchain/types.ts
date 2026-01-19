@@ -8,6 +8,7 @@ export interface TableRowsParams {
   limit?: number;
   key_type?: string;
   index_position?: number;
+  reverse?: boolean;
 }
 
 export interface TableRowsResponse<T = any> {
