@@ -321,6 +321,9 @@ export class AggressiveStrategy implements TradingStrategy {
       const stakePercent = Math.min(decision.stakePercent, this.config.risk.maxPercentPerChallenge);
       let stakeAmount = Math.floor(availableBalance * (stakePercent / 100));
 
+      // Round down to nearest 100 XPR for cleaner amounts
+      stakeAmount = Math.floor(stakeAmount / 100) * 100;
+
       // Ensure at least MIN_STAKE
       stakeAmount = Math.max(stakeAmount, MIN_STAKE);
 

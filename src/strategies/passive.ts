@@ -291,6 +291,9 @@ export class PassiveStrategy implements TradingStrategy {
       const stakePercent = Math.min(decision.stakePercent, this.MAX_STAKE_PERCENT, this.config.risk.maxPercentPerChallenge);
       let stakeAmount = Math.floor(availableBalance * (stakePercent / 100));
 
+      // Round down to nearest 100 XPR for cleaner amounts
+      stakeAmount = Math.floor(stakeAmount / 100) * 100;
+
       // Ensure at least MIN_STAKE
       stakeAmount = Math.max(stakeAmount, MIN_STAKE);
 
