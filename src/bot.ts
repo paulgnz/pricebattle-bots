@@ -68,7 +68,7 @@ export class PriceBattleBot {
     );
 
     // Initialize market data service (CoinGecko for multi-timeframe analysis)
-    const marketDataService = new MarketDataService(this.logger);
+    const marketDataService = new MarketDataService(this.logger, this.config.coingeckoApiKey);
 
     // Create strategy
     this.strategy = createStrategy(this.config.mode, {

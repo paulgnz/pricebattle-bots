@@ -75,6 +75,9 @@ export function loadConfig(overrides: Partial<{ mode: BotMode; dryRun: boolean }
 
     // Logging
     logLevel: env.LOG_LEVEL,
+
+    // CoinGecko API key (optional)
+    coingeckoApiKey: env.COINGECKO_API_KEY,
   };
 
   return config;

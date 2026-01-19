@@ -53,6 +53,9 @@ export const EnvSchema = z.object({
   // Logging
   LOG_LEVEL: LogLevelSchema.default('info'),
   DATABASE_PATH: z.string().default('./data/pricebattle.db'),
+
+  // CoinGecko API (optional - improves rate limiting)
+  COINGECKO_API_KEY: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;

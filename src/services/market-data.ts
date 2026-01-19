@@ -53,6 +53,7 @@ export interface MultiTimeframeData {
 
 export class MarketDataService {
   private logger?: Logger;
+  private apiKey?: string;
   private cache: MultiTimeframeData | null = null;
   private cacheExpiry: number = 0;
   private lastApiCall: number = 0;
@@ -62,8 +63,12 @@ export class MarketDataService {
   private readonly MIN_API_INTERVAL_MS = 300000; // Min 5 minutes between API calls
   private readonly COINGECKO_RATE_LIMIT_DELAY = 2000; // 2s between requests (safe margin)
 
-  constructor(logger?: Logger) {
+  constructor(logger?: Logger, apiKey?: string) {
     this.logger = logger;
+    this.apiKey = apiKey;
+    if (apiKey) {
+      this.logger?.info('CoinGecko API key configured - using authenticated requests');
+    }
   }
 
   /**
@@ -166,8 +171,17 @@ export class MarketDataService {
    * Fetch with retry on rate limit
    */
   private async fetchWithRetry(url: string, retries: number = 3): Promise<any> {
+    // Build headers - add API key if available
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+    if (this.apiKey) {
+      // Demo API key header (works for free demo plan)
+      headers['x-cg-demo-api-key'] = this.apiKey;
+    }
+
     for (let i = 0; i < retries; i++) {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers });
 
       if (response.status === 429) {
         // Rate limited - wait and retry

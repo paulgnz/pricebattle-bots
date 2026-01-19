@@ -51,6 +51,9 @@ export interface BotConfig {
 
   // Logging
   logLevel: string;
+
+  // CoinGecko API key (optional - improves rate limiting)
+  coingeckoApiKey?: string;
 }
 
 export interface NetworkConfig {
