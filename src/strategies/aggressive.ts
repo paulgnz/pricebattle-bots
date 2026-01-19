@@ -39,6 +39,8 @@ export class AggressiveStrategy implements TradingStrategy {
   private readonly MIN_CREATE_CONFIDENCE = 50;
   private readonly MIN_ACCEPT_CONFIDENCE = 50;
   private readonly CREATE_COOLDOWN_MS = 300000; // 5 minutes between creates
+  private readonly MAX_DURATION = 3600; // 1 hour max for creating/accepting
+  private readonly MAX_ACCEPT_STAKE = 500; // Max 500 XPR when accepting challenges
   private lastCreateTime = 0;
 
   constructor(
@@ -160,9 +162,12 @@ export class AggressiveStrategy implements TradingStrategy {
         this.config.risk.maxPercentPerChallenge
       );
 
+      // Cap duration at MAX_DURATION (1 hour)
+      const duration = Math.min(analysis.recommendedDuration, this.MAX_DURATION);
+
       return {
         direction: analysis.direction === 'UP' ? DIRECTION.UP : DIRECTION.DOWN,
-        duration: analysis.recommendedDuration,
+        duration,
         stakePercent,
         reasoning: analysis.reasoning,
       };
@@ -179,6 +184,27 @@ export class AggressiveStrategy implements TradingStrategy {
     context: PredictionContext
   ): Promise<boolean> {
     try {
+      // Check duration limit - skip challenges longer than 1 hour
+      if (challenge.duration > this.MAX_DURATION) {
+        this.logger?.debug('Skipping challenge - duration too long', {
+          challengeId: challenge.id,
+          duration: challenge.duration,
+          maxDuration: this.MAX_DURATION,
+        });
+        return false;
+      }
+
+      // Check stake limit - skip challenges over MAX_ACCEPT_STAKE XPR
+      const stakeAmount = parseInt(challenge.amount, 10) / 10000; // Convert from raw to XPR
+      if (stakeAmount > this.MAX_ACCEPT_STAKE) {
+        this.logger?.debug('Skipping challenge - stake too high', {
+          challengeId: challenge.id,
+          stake: stakeAmount,
+          maxStake: this.MAX_ACCEPT_STAKE,
+        });
+        return false;
+      }
+
       // Use the same prediction logic as for creating challenges
       const prompt = buildPredictionPrompt(context);
       const analysis = await this.aiClient.analyze(prompt);
