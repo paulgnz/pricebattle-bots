@@ -239,10 +239,28 @@ npm test
 
 ## Security
 
+### IMPORTANT: Use a Dedicated Bot Account
+
+**DO NOT use your main XPR wallet with this bot.** The bot has full control over the account and will automatically create/accept challenges and transfer XPR.
+
+**Create a new account specifically for the bot:**
+
+1. **Create a new Proton account** at [proton.link](https://proton.link) or via WebAuth wallet
+2. **Get your Private Key** from your mnemonic (12/24 words):
+   - Go to [XPR Explorer Format Keys](https://explorer.xprnetwork.org/wallet/utilities/format-keys)
+   - Enter your mnemonic phrase
+   - Copy the **Private Key** (starts with `PVT_K1_`)
+3. **Fund with spare XPR** - only send XPR you're willing to risk
+4. **Add the private key to `.env`**
+
+### Best Practices
+
 - **Private Key**: Store securely in `.env` (never commit!)
 - **Dry Run**: Always test with `--dry-run` first
 - **Testnet**: Test on proton-test before mainnet
 - **Limits**: Configure conservative limits initially
+- **Separate Account**: Never use your main wallet - the AI controls this account!
+- **Start Small**: Fund with a small amount first to test
 
 ## License
 

@@ -38,6 +38,8 @@ export class PassiveStrategy implements TradingStrategy {
   private readonly MIN_CREATE_CONFIDENCE = 75;
   private readonly MIN_ACCEPT_CONFIDENCE = 75;
   private readonly MAX_STAKE_PERCENT = 3;
+  private readonly CREATE_COOLDOWN_MS = 120000; // 2 minutes between creates (more conservative)
+  private lastCreateTime = 0;
 
   constructor(
     resolverService: ResolverService,
@@ -74,10 +76,19 @@ export class PassiveStrategy implements TradingStrategy {
 
     // Check if we can create new challenges
     const activeCount = await this.challengeService.getOurActiveChallengesCount();
-    if (activeCount < this.config.risk.maxConcurrentChallenges) {
+    const openChallenges = await this.challengeService.getOpenChallenges();
+    const ourOpenCount = openChallenges.filter(c => c.creator === this.config.account).length;
+    const totalOurChallenges = activeCount + ourOpenCount;
+
+    // Check cooldown and challenge limits before creating
+    const now = Date.now();
+    const cooldownOk = now - this.lastCreateTime >= this.CREATE_COOLDOWN_MS;
+
+    if (totalOurChallenges < this.config.risk.maxConcurrentChallenges && cooldownOk) {
       const createDecision = await this.shouldCreate(context);
       if (createDecision) {
         await this.executeCreate(createDecision, context);
+        this.lastCreateTime = now;
       }
     }
 
@@ -206,14 +217,39 @@ export class PassiveStrategy implements TradingStrategy {
     context: PredictionContext
   ): Promise<void> {
     try {
-      // TODO: Get actual balance and calculate stake
-      // For now, use a fixed minimum stake
-      const amount = '100.0000 XPR';
+      // Calculate stake based on balance and config
+      const balance = await this.challengeService.getBalance();
+      const minReserve = this.config.risk.minBalanceReserve;
+      const availableBalance = Math.max(0, balance - minReserve);
+
+      // Minimum stake of 100 XPR
+      const MIN_STAKE = 100;
+
+      // Check if we have enough balance
+      if (availableBalance < MIN_STAKE) {
+        this.logger?.info('Skipping create - insufficient balance', {
+          balance,
+          availableBalance,
+          requiredMin: MIN_STAKE,
+        });
+        return;
+      }
+
+      // Use conservative stake (capped at MAX_STAKE_PERCENT)
+      const stakePercent = Math.min(decision.stakePercent, this.MAX_STAKE_PERCENT, this.config.risk.maxPercentPerChallenge);
+      let stakeAmount = Math.floor(availableBalance * (stakePercent / 100));
+
+      // Ensure at least MIN_STAKE
+      stakeAmount = Math.max(stakeAmount, MIN_STAKE);
+
+      const amount = `${stakeAmount.toFixed(4)} XPR`;
 
       this.logger?.info('Creating challenge', {
         direction: decision.direction === 1 ? 'UP' : 'DOWN',
         duration: decision.duration,
         amount,
+        balance,
+        stakePercent,
         reasoning: decision.reasoning,
       });
 

@@ -163,4 +163,13 @@ export class ChallengeService {
     const config = await this.getConfig();
     return config?.paused ?? false;
   }
+
+  /**
+   * Get XPR balance for the account
+   */
+  async getBalance(): Promise<number> {
+    const [balance] = await this.rpc.getCurrencyBalance('eosio.token', this.account, 'XPR');
+    if (!balance) return 0;
+    return parseFloat(balance.split(' ')[0]);
+  }
 }
