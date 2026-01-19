@@ -16,7 +16,7 @@ An open-source Node.js trading and resolver bot for the [PriceBattle](https://pr
 ### 1. Installation
 
 ```bash
-git clone https://github.com/your-username/pricebattle-bots.git
+git clone https://github.com/paulgnz/pricebattle-bots.git
 cd pricebattle-bots
 npm install
 ```
@@ -185,10 +185,12 @@ npm start -- start --mode aggressive
 ### PriceBattle Game
 
 1. **Create Challenge**: Player stakes XPR and predicts BTC direction (UP/DOWN)
-2. **Accept Challenge**: Opponent matches stake and takes opposite side
+2. **Accept Challenge**: Opponent matches stake and takes opposite side (price locked from oracle)
 3. **Battle Period**: Wait for the duration (5min to 24h)
-4. **Resolution**: Anyone can resolve after time ends
+4. **Resolution**: Anyone can resolve after time ends (price fetched from oracle)
 5. **Payout**: Winner gets 95%, resolver gets 2%, treasury gets 3%
+
+**Note**: The contract fetches BTC prices directly from the XPR Network oracle (`oracles` contract, feed index 4) to ensure price integrity. Prices cannot be manipulated by users.
 
 ### Bot Strategy
 
