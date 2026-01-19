@@ -38,7 +38,7 @@ export class AggressiveStrategy implements TradingStrategy {
   // Lower confidence thresholds for aggressive mode
   private readonly MIN_CREATE_CONFIDENCE = 50;
   private readonly MIN_ACCEPT_CONFIDENCE = 50;
-  private readonly CREATE_COOLDOWN_MS = 300000; // 5 minutes between creates
+  private readonly CREATE_COOLDOWN_MS = 600000; // 10 minutes between creates
   private readonly MAX_DURATION = 3600; // 1 hour max for creating/accepting
   private readonly MAX_ACCEPT_STAKE = 500; // Max 500 XPR when accepting challenges
   private lastCreateTime = 0;
@@ -96,15 +96,21 @@ export class AggressiveStrategy implements TradingStrategy {
     const totalOurChallenges = activeCount + ourOpenCount;
 
     // Check cooldown and challenge limits before creating
+    // Only create if we have NO open challenges waiting - reduces expired challenges
     const now = Date.now();
     const cooldownOk = now - this.lastCreateTime >= this.CREATE_COOLDOWN_MS;
+    const noOpenChallenges = ourOpenCount === 0;
 
-    if (totalOurChallenges < this.config.risk.maxConcurrentChallenges && cooldownOk) {
+    if (noOpenChallenges && totalOurChallenges < this.config.risk.maxConcurrentChallenges && cooldownOk) {
       const createDecision = await this.shouldCreate(context);
       if (createDecision) {
         await this.executeCreate(createDecision, context);
         this.lastCreateTime = now;
       }
+    } else if (!noOpenChallenges) {
+      this.logger?.info('Skipping create - waiting for open challenge to be accepted', {
+        openChallenges: ourOpenCount,
+      });
     } else if (!cooldownOk) {
       this.logger?.info('Skipping create - cooldown active', {
         secondsRemaining: Math.ceil((this.CREATE_COOLDOWN_MS - (now - this.lastCreateTime)) / 1000),
