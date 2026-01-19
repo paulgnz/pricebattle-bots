@@ -13,16 +13,48 @@ export function buildPredictionPrompt(context: PredictionContext): string {
     })
     .join('\n');
 
+  // Build technical indicators section
+  let indicatorsStr = '';
+  if (context.indicators) {
+    const ind = context.indicators;
+    indicatorsStr = `
+TECHNICAL INDICATORS:
+- SMA(20): ${formatUSD(ind.sma20)} ${context.currentPrice > ind.sma20 ? '(price above)' : '(price below)'}
+- SMA(50): ${formatUSD(ind.sma50)} ${context.currentPrice > ind.sma50 ? '(price above)' : '(price below)'}
+- EMA(12): ${formatUSD(ind.ema12)}
+- EMA(26): ${formatUSD(ind.ema26)}
+- MACD Signal: ${ind.ema12 > ind.ema26 ? 'BULLISH (EMA12 > EMA26)' : 'BEARISH (EMA12 < EMA26)'}
+- RSI(14): ${ind.rsi14.toFixed(1)} ${ind.rsi14 > 70 ? '(OVERBOUGHT)' : ind.rsi14 < 30 ? '(OVERSOLD)' : '(NEUTRAL)'}
+- 1h Trend: ${ind.trend1h.toUpperCase()}
+- 24h Trend: ${ind.trend24h.toUpperCase()}
+- Momentum: ${ind.momentum.toUpperCase().replace('_', ' ')}
+`;
+  }
+
+  // Build price changes section
+  let changesStr = '';
+  if (context.change1h !== undefined) changesStr += `- 1h Change: ${context.change1h >= 0 ? '+' : ''}${context.change1h.toFixed(2)}%\n`;
+  if (context.change24h !== undefined) changesStr += `- 24h Change: ${context.change24h >= 0 ? '+' : ''}${context.change24h.toFixed(2)}%\n`;
+  if (context.change7d !== undefined) changesStr += `- 7d Change: ${context.change7d >= 0 ? '+' : ''}${context.change7d.toFixed(2)}%\n`;
+  if (context.change30d !== undefined) changesStr += `- 30d Change: ${context.change30d >= 0 ? '+' : ''}${context.change30d.toFixed(2)}%\n`;
+
+  // Volatility info
+  let volatilityStr = '';
+  if (context.volatility24h !== undefined) {
+    volatilityStr = `- 24h Volatility: ${context.volatility24h.toFixed(2)}% (range: ${formatUSD(context.low24h || 0)} - ${formatUSD(context.high24h || 0)})\n`;
+    if (context.pricePosition !== undefined) {
+      volatilityStr += `- Price Position in Range: ${context.pricePosition.toFixed(0)}% (0%=at low, 100%=at high)\n`;
+    }
+  }
+
   return `You are a BTC price movement analyst for a price prediction game on XPR Network.
 
 CURRENT MARKET DATA:
 - Current BTC Price: ${formatUSD(context.currentPrice)}
 ${context.high24h ? `- 24h High: ${formatUSD(context.high24h)}` : ''}
 ${context.low24h ? `- 24h Low: ${formatUSD(context.low24h)}` : ''}
-${context.change1h !== undefined ? `- 1h Change: ${context.change1h.toFixed(2)}%` : ''}
-${context.change24h !== undefined ? `- 24h Change: ${context.change24h.toFixed(2)}%` : ''}
-
-RECENT PRICE HISTORY (last 30 data points):
+${changesStr}${volatilityStr}${indicatorsStr}
+RECENT PRICE HISTORY (last 30 data points, 1-min intervals):
 ${priceHistoryStr}
 
 BOT PERFORMANCE (cumulative):
@@ -32,24 +64,33 @@ BOT PERFORMANCE (cumulative):
 - Win Rate: ${context.performance.winRate.toFixed(1)}%
 
 AVAILABLE DURATIONS:
-- 5 minutes (300s) - Very short term
+- 5 minutes (300s) - Very short term, for quick scalps
 - 10 minutes (600s) - Short term
-- 30 minutes (1800s) - Medium term
-- 1 hour (3600s) - Standard
-- 4 hours (14400s) - Long term
+- 30 minutes (1800s) - Medium term, good for clear trends
+- 1 hour (3600s) - Standard, for established trends
+- 4 hours (14400s) - Long term, for major moves
 - 24 hours (86400s) - Very long term
 
+ANALYSIS GUIDELINES:
+1. Use RSI to identify overbought (>70) or oversold (<30) conditions
+2. Check if price is above/below key moving averages (SMA20, SMA50)
+3. Look at MACD signal (EMA12 vs EMA26) for momentum
+4. Consider the 1h and 24h trend alignment
+5. Factor in recent price changes across timeframes
+6. Higher confidence = shorter duration; lower confidence = longer duration or NEUTRAL
+
 TASK:
-Analyze the price data and predict whether BTC will go UP or DOWN from the current price.
-Consider momentum, volatility, and recent trends. Be conservative - only recommend trading when you see a clear signal.
+Analyze ALL the data above and predict whether BTC will go UP or DOWN from the current price.
+Provide clear reasoning based on the indicators and trends.
+Only recommend trading when multiple signals align. Say NEUTRAL if signals are mixed.
 
 IMPORTANT: Respond with ONLY a valid JSON object, no other text:
 {
   "direction": "UP" | "DOWN" | "NEUTRAL",
   "confidence": <0-100>,
-  "reasoning": "<brief 1-2 sentence explanation>",
+  "reasoning": "<2-3 sentences explaining your analysis based on the indicators, trends, and price action>",
   "duration_seconds": <recommended duration: 300, 600, 1800, 3600, 14400, or 86400>,
-  "stake_percent": <1-10, percentage of available funds to risk>
+  "stake_percent": <1-10, percentage of available funds to risk based on confidence>
 }`;
 }
 

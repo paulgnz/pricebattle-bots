@@ -1,5 +1,5 @@
 import { RpcClient, TransactionSigner, PriceBattleActions } from './blockchain';
-import { OracleService, ChallengeService, ResolverService } from './services';
+import { OracleService, ChallengeService, ResolverService, MarketDataService } from './services';
 import { initDatabase, DatabaseQueries } from './db';
 import { TradingStrategy, createStrategy } from './strategies';
 import { BotConfig } from './types';
@@ -67,11 +67,15 @@ export class PriceBattleBot {
       this.logger
     );
 
+    // Initialize market data service (CoinGecko for multi-timeframe analysis)
+    const marketDataService = new MarketDataService(this.logger);
+
     // Create strategy
     this.strategy = createStrategy(this.config.mode, {
       resolverService,
       challengeService,
       oracleService: this.oracleService,
+      marketDataService,
       actions,
       db: this.db,
       config: this.config,

@@ -1,8 +1,8 @@
 import { TradingStrategy } from './base';
-import { ResolverService, ChallengeService, OracleService } from '../services';
+import { ResolverService, ChallengeService, OracleService, MarketDataService } from '../services';
 import { PriceBattleActions } from '../blockchain';
 import { DatabaseQueries } from '../db';
-import { createAIClient, buildPredictionPrompt, buildAcceptPrompt } from '../ai';
+import { createAIClient, buildPredictionPrompt } from '../ai';
 import {
   Challenge,
   CreateDecision,
@@ -28,6 +28,7 @@ export class AggressiveStrategy implements TradingStrategy {
   private resolverService: ResolverService;
   private challengeService: ChallengeService;
   private oracleService: OracleService;
+  private marketDataService: MarketDataService;
   private actions: PriceBattleActions;
   private db: DatabaseQueries;
   private aiClient: AIClient;
@@ -44,6 +45,7 @@ export class AggressiveStrategy implements TradingStrategy {
     resolverService: ResolverService,
     challengeService: ChallengeService,
     oracleService: OracleService,
+    marketDataService: MarketDataService,
     actions: PriceBattleActions,
     db: DatabaseQueries,
     config: BotConfig,
@@ -52,6 +54,7 @@ export class AggressiveStrategy implements TradingStrategy {
     this.resolverService = resolverService;
     this.challengeService = challengeService;
     this.oracleService = oracleService;
+    this.marketDataService = marketDataService;
     this.actions = actions;
     this.db = db;
     this.config = config;
@@ -175,29 +178,43 @@ export class AggressiveStrategy implements TradingStrategy {
     context: PredictionContext
   ): Promise<boolean> {
     try {
-      const prompt = buildAcceptPrompt(challenge, context);
-      const analysis = await this.aiClient.evaluateAccept(prompt);
+      // Use the same prediction logic as for creating challenges
+      const prompt = buildPredictionPrompt(context);
+      const analysis = await this.aiClient.analyze(prompt);
+
+      // Determine what direction we'd take if we accept
+      // Creator UP (1) -> we take DOWN, Creator DOWN (2) -> we take UP
+      const ourDirection = challenge.direction === 1 ? 'DOWN' : 'UP';
+      const predictionMatchesOurSide = analysis.direction === ourDirection;
 
       // Log decision
       this.db.logDecision({
         challengeId: challenge.id,
-        action: analysis.accept ? 'accept' : 'skip',
-        direction: challenge.direction === 1 ? 'DOWN' : 'UP',
+        action: predictionMatchesOurSide && analysis.confidence >= this.MIN_ACCEPT_CONFIDENCE ? 'accept' : 'skip',
+        direction: ourDirection,
         confidence: analysis.confidence,
         reasoning: analysis.reasoning,
         aiProvider: this.config.ai.provider,
         priceAtDecision: context.currentPrice,
       });
 
-      // More aggressive acceptance
-      if (!analysis.accept || analysis.confidence < this.MIN_ACCEPT_CONFIDENCE) {
+      // Accept if AI predicts the same direction we'd take and confidence is high enough
+      if (!predictionMatchesOurSide || analysis.confidence < this.MIN_ACCEPT_CONFIDENCE) {
         this.logger?.debug('Skipping challenge', {
           challengeId: challenge.id,
-          accept: analysis.accept,
+          ourDirection,
+          aiPrediction: analysis.direction,
           confidence: analysis.confidence,
+          reason: !predictionMatchesOurSide ? 'direction mismatch' : 'low confidence',
         });
         return false;
       }
+
+      this.logger?.info('AI recommends accepting', {
+        challengeId: challenge.id,
+        ourDirection,
+        confidence: analysis.confidence,
+      });
 
       return true;
     } catch (error) {
@@ -224,11 +241,56 @@ export class AggressiveStrategy implements TradingStrategy {
       Promise.resolve(this.db.getPerformance()),
     ]);
 
-    return {
+    // Try to get enhanced market data from CoinGecko
+    let marketData;
+    try {
+      marketData = await this.marketDataService.getBTCMarketData();
+    } catch (error) {
+      this.logger?.warn('Failed to fetch market data, using basic context', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const context: PredictionContext = {
       currentPrice: price,
-      priceHistory: priceHistory.reverse(),
+      priceHistory: priceHistory.reverse(), // Oldest first
       performance,
     };
+
+    // Enhance with market data if available
+    if (marketData) {
+      context.high24h = marketData.current.high24h;
+      context.low24h = marketData.current.low24h;
+      context.change1h = marketData.current.change1h;
+      context.change24h = marketData.current.change24h;
+      context.change7d = marketData.current.change7d;
+      context.change30d = marketData.current.change30d;
+      context.volatility24h = marketData.current.volatility24h;
+      context.pricePosition = marketData.current.pricePosition;
+      context.volume24h = marketData.current.volume24h;
+      context.indicators = {
+        sma20: marketData.sma20,
+        sma50: marketData.sma50,
+        ema12: marketData.ema12,
+        ema26: marketData.ema26,
+        rsi14: marketData.rsi14,
+        trend1h: marketData.trend1h,
+        trend24h: marketData.trend24h,
+        momentum: marketData.momentum,
+      };
+
+      this.logger?.info('Market analysis', {
+        price: price.toFixed(2),
+        change1h: `${marketData.current.change1h >= 0 ? '+' : ''}${marketData.current.change1h.toFixed(2)}%`,
+        change24h: `${marketData.current.change24h >= 0 ? '+' : ''}${marketData.current.change24h.toFixed(2)}%`,
+        rsi: marketData.rsi14.toFixed(1),
+        trend1h: marketData.trend1h,
+        trend24h: marketData.trend24h,
+        momentum: marketData.momentum,
+      });
+    }
+
+    return context;
   }
 
   private async executeCreate(

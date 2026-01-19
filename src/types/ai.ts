@@ -20,8 +20,25 @@ export interface PredictionContext {
   low24h?: number;
   change1h?: number;
   change24h?: number;
+  change7d?: number;
+  change30d?: number;
+  volatility24h?: number;
+  pricePosition?: number; // Where price is in 24h range (0-100%)
+  volume24h?: number;
   priceHistory: PricePoint[];
   performance: BotPerformance;
+
+  // Technical indicators (from multi-timeframe analysis)
+  indicators?: {
+    sma20: number;
+    sma50: number;
+    ema12: number;
+    ema26: number;
+    rsi14: number;
+    trend1h: 'bullish' | 'bearish' | 'neutral';
+    trend24h: 'bullish' | 'bearish' | 'neutral';
+    momentum: 'strong_up' | 'up' | 'neutral' | 'down' | 'strong_down';
+  };
 }
 
 export interface PricePoint {

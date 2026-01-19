@@ -7,7 +7,7 @@ import { TradingStrategy } from './base';
 import { ResolverStrategy } from './resolver';
 import { PassiveStrategy } from './passive';
 import { AggressiveStrategy } from './aggressive';
-import { ResolverService, ChallengeService, OracleService } from '../services';
+import { ResolverService, ChallengeService, OracleService, MarketDataService } from '../services';
 import { PriceBattleActions } from '../blockchain';
 import { DatabaseQueries } from '../db';
 import { BotConfig, BotMode } from '../types';
@@ -17,6 +17,7 @@ export interface StrategyDependencies {
   resolverService: ResolverService;
   challengeService: ChallengeService;
   oracleService: OracleService;
+  marketDataService: MarketDataService;
   actions: PriceBattleActions;
   db: DatabaseQueries;
   config: BotConfig;
@@ -30,7 +31,7 @@ export function createStrategy(
   mode: BotMode,
   deps: StrategyDependencies
 ): TradingStrategy {
-  const { resolverService, challengeService, oracleService, actions, db, config, logger } = deps;
+  const { resolverService, challengeService, oracleService, marketDataService, actions, db, config, logger } = deps;
 
   switch (mode) {
     case 'resolver':
@@ -41,6 +42,7 @@ export function createStrategy(
         resolverService,
         challengeService,
         oracleService,
+        marketDataService,
         actions,
         db,
         config,
@@ -52,6 +54,7 @@ export function createStrategy(
         resolverService,
         challengeService,
         oracleService,
+        marketDataService,
         actions,
         db,
         config,
