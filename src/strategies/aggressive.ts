@@ -38,7 +38,7 @@ export class AggressiveStrategy implements TradingStrategy {
   // Lower confidence thresholds for aggressive mode
   private readonly MIN_CREATE_CONFIDENCE = 50;
   private readonly MIN_ACCEPT_CONFIDENCE = 50;
-  private readonly CREATE_COOLDOWN_MS = 60000; // 1 minute between creates
+  private readonly CREATE_COOLDOWN_MS = 300000; // 5 minutes between creates
   private lastCreateTime = 0;
 
   constructor(

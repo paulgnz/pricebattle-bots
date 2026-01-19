@@ -64,10 +64,8 @@ BOT PERFORMANCE (cumulative):
 - Win Rate: ${context.performance.winRate.toFixed(1)}%
 
 AVAILABLE DURATIONS:
-- 5 minutes (300s) - Very short term, for quick scalps
-- 10 minutes (600s) - Short term
-- 30 minutes (1800s) - Medium term, good for clear trends
-- 1 hour (3600s) - Standard, for established trends
+- 30 minutes (1800s) - PREFERRED: Good balance of time for price movement
+- 1 hour (3600s) - PREFERRED: Standard, for established trends
 - 4 hours (14400s) - Long term, for major moves
 - 24 hours (86400s) - Very long term
 
@@ -77,7 +75,8 @@ ANALYSIS GUIDELINES:
 3. Look at MACD signal (EMA12 vs EMA26) for momentum
 4. Consider the 1h and 24h trend alignment
 5. Factor in recent price changes across timeframes
-6. Higher confidence = shorter duration; lower confidence = longer duration or NEUTRAL
+6. PREFER 30-60 minute durations - these give enough time for price movement while being engaging
+7. Only use very short durations (under 30 min) if you have extremely high confidence (90%+)
 
 TASK:
 Analyze ALL the data above and predict whether BTC will go UP or DOWN from the current price.
@@ -89,7 +88,7 @@ IMPORTANT: Respond with ONLY a valid JSON object, no other text:
   "direction": "UP" | "DOWN" | "NEUTRAL",
   "confidence": <0-100>,
   "reasoning": "<2-3 sentences explaining your analysis based on the indicators, trends, and price action>",
-  "duration_seconds": <recommended duration: 300, 600, 1800, 3600, 14400, or 86400>,
+  "duration_seconds": <recommended duration: 1800, 3600, 14400, or 86400 - prefer 1800 or 3600>,
   "stake_percent": <1-10, percentage of available funds to risk based on confidence>
 }`;
 }
