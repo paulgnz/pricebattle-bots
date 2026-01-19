@@ -75,24 +75,16 @@ export class ResolverService {
         };
       }
 
-      // Get current price from oracle
-      const { price } = await this.oracleService.getBTCPrice();
-      const endPrice = this.oracleService.priceToU64(price);
-
+      // Contract now fetches price directly from oracle
       this.logger?.info('Resolving battle', {
         challengeId: challenge.id,
         creator: challenge.creator,
         opponent: challenge.opponent,
         startPrice: challenge.start_price,
-        endPrice,
-        priceUSD: price,
       });
 
-      // Execute resolve transaction
-      const result = await this.actions.resolveBattle({
-        challengeId: challenge.id,
-        endPrice,
-      });
+      // Execute resolve transaction - contract fetches price from oracle
+      const result = await this.actions.resolveBattle(challenge.id);
 
       // Calculate resolver reward (2% of total pot)
       const pot = parseInt(challenge.amount, 10) * 2;
@@ -107,11 +99,10 @@ export class ResolverService {
         resolverReward: formatXPR(resolverReward),
       });
 
-      // Log decision
+      // Log decision (price is now fetched by contract on-chain)
       this.db.logDecision({
         challengeId: challenge.id,
         action: 'resolve',
-        priceAtDecision: price,
       });
 
       return {

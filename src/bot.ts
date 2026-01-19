@@ -204,6 +204,9 @@ export class PriceBattleBot {
    * Get resolver service for manual operations
    */
   async manualResolve(): Promise<void> {
+    // Ensure initialized before running
+    await this.initialize();
+
     this.logger.info('Running manual resolve...');
     const results = await this.strategy.resolveExpired();
     this.logger.info('Manual resolve complete', {

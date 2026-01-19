@@ -300,20 +300,17 @@ export class AggressiveStrategy implements TradingStrategy {
     context: PredictionContext
   ): Promise<void> {
     try {
-      const { price } = await this.oracleService.getBTCPrice();
-      const currentPrice = this.oracleService.priceToU64(price);
       const amount = formatXPRWithSymbol(challenge.amount);
 
       this.logger?.info('Accepting challenge (aggressive)', {
         challengeId: challenge.id,
         amount,
-        currentPrice: price,
       });
 
+      // Contract fetches price directly from oracle
       const result = await this.actions.acceptChallenge({
         challengeId: challenge.id,
         amount,
-        currentPrice,
       });
 
       this.logger?.info('Challenge accepted', {

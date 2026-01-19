@@ -75,18 +75,17 @@ export class PriceBattleActions {
 
   /**
    * Accept an open challenge
+   * Price is fetched from oracle by the contract
    */
   async acceptChallenge(params: {
     challengeId: number;
     amount: string; // Must match challenge amount
-    currentPrice: string; // u64 format with 8 decimals
   }): Promise<TransactResult> {
-    const { challengeId, amount, currentPrice } = params;
+    const { challengeId, amount } = params;
 
     this.logger?.info('Accepting challenge', {
       challengeId,
       amount,
-      currentPrice,
     });
 
     const actions: Action[] = [
@@ -102,7 +101,7 @@ export class PriceBattleActions {
           memo: 'PriceBattle stake',
         },
       },
-      // Accept the challenge
+      // Accept the challenge - price is fetched from oracle by contract
       {
         account: 'pricebattle',
         name: 'accept',
@@ -110,7 +109,6 @@ export class PriceBattleActions {
         data: {
           opponent: this.account,
           challenge_id: challengeId,
-          current_price: currentPrice,
         },
       },
     ];
@@ -161,17 +159,10 @@ export class PriceBattleActions {
 
   /**
    * Resolve an active battle (anyone can call after duration ends)
+   * Price is fetched from oracle by the contract
    */
-  async resolveBattle(params: {
-    challengeId: number;
-    endPrice: string; // u64 format with 8 decimals
-  }): Promise<TransactResult> {
-    const { challengeId, endPrice } = params;
-
-    this.logger?.info('Resolving battle', {
-      challengeId,
-      endPrice,
-    });
+  async resolveBattle(challengeId: number): Promise<TransactResult> {
+    this.logger?.info('Resolving battle', { challengeId });
 
     const actions: Action[] = [
       {
@@ -181,7 +172,6 @@ export class PriceBattleActions {
         data: {
           challenge_id: challengeId,
           resolver: this.account,
-          end_price: endPrice,
         },
       },
     ];
