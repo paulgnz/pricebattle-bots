@@ -245,13 +245,14 @@ npm test
 
 **Create a new account specifically for the bot:**
 
-1. **Create a new Proton account** at [proton.link](https://proton.link) or via WebAuth wallet
-2. **Get your Private Key** from your mnemonic (12/24 words):
+1. **Create a new Proton account** at [webauth.com](https://webauth.com)
+2. **Save your mnemonic** (12 words) - you'll need this to get the private key
+3. **Convert mnemonic to Private Key**:
    - Go to [XPR Explorer Format Keys](https://explorer.xprnetwork.org/wallet/utilities/format-keys)
-   - Enter your mnemonic phrase
+   - Enter your 12-word mnemonic phrase
    - Copy the **Private Key** (starts with `PVT_K1_`)
-3. **Fund with spare XPR** - only send XPR you're willing to risk
-4. **Add the private key to `.env`**
+4. **Fund with spare XPR** - send only what you're willing to risk to your new account
+5. **Add the private key to `.env`**
 
 ### Best Practices
 
