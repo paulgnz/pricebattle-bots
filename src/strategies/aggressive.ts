@@ -38,11 +38,33 @@ export class AggressiveStrategy implements TradingStrategy {
   // Lower confidence thresholds for aggressive mode
   private readonly MIN_CREATE_CONFIDENCE = 50;
   private readonly MIN_ACCEPT_CONFIDENCE = 50;
+  // Higher confidence thresholds for cautious mode (when approaching loss limit)
+  private readonly CAUTIOUS_CREATE_CONFIDENCE = 75;
+  private readonly CAUTIOUS_ACCEPT_CONFIDENCE = 75;
+  private readonly CAUTIOUS_THRESHOLD = 0.7; // Switch to cautious at 70% of daily loss limit
   private readonly CREATE_COOLDOWN_MS = 600000; // 10 minutes between creates
   private readonly MIN_DURATION = 1800; // 30 min minimum - 10 min has 27% win rate!
   private readonly MAX_DURATION = 3600; // 1 hour max for creating/accepting
   private readonly MAX_ACCEPT_STAKE = 250; // Max 250 XPR when accepting challenges
+  private readonly MAX_PRICE_MOVE_PERCENT = 0.5; // Skip if price moved > 0.5% since challenge created
   private lastCreateTime = 0;
+  private cautiousMode = false;
+
+  /**
+   * Get current confidence thresholds based on cautious mode
+   */
+  private getConfidenceThresholds(): { create: number; accept: number } {
+    if (this.cautiousMode) {
+      return {
+        create: this.CAUTIOUS_CREATE_CONFIDENCE,
+        accept: this.CAUTIOUS_ACCEPT_CONFIDENCE,
+      };
+    }
+    return {
+      create: this.MIN_CREATE_CONFIDENCE,
+      accept: this.MIN_ACCEPT_CONFIDENCE,
+    };
+  }
 
   constructor(
     resolverService: ResolverService,
@@ -85,6 +107,18 @@ export class AggressiveStrategy implements TradingStrategy {
         limit: this.config.risk.maxDailyLoss,
       });
       return;
+    }
+
+    // Check if we're in cautious mode (approaching loss limit)
+    this.cautiousMode = dailyLoss >= this.config.risk.maxDailyLoss * this.CAUTIOUS_THRESHOLD;
+    if (this.cautiousMode) {
+      this.logger?.info('Cautious mode active - using higher confidence thresholds', {
+        dailyLoss,
+        threshold: this.config.risk.maxDailyLoss * this.CAUTIOUS_THRESHOLD,
+        limit: this.config.risk.maxDailyLoss,
+        createThreshold: this.CAUTIOUS_CREATE_CONFIDENCE,
+        acceptThreshold: this.CAUTIOUS_ACCEPT_CONFIDENCE,
+      });
     }
 
     // Get current context
@@ -151,14 +185,17 @@ export class AggressiveStrategy implements TradingStrategy {
         priceAtDecision: context.currentPrice,
       });
 
-      // Accept any signal above threshold
+      // Accept any signal above threshold (adjusted for cautious mode)
+      const thresholds = this.getConfidenceThresholds();
       if (
         analysis.direction === 'NEUTRAL' ||
-        analysis.confidence < this.MIN_CREATE_CONFIDENCE
+        analysis.confidence < thresholds.create
       ) {
         this.logger?.info('Skipping create - below threshold', {
           direction: analysis.direction,
           confidence: analysis.confidence,
+          threshold: thresholds.create,
+          cautiousMode: this.cautiousMode,
         });
         return null;
       }
@@ -226,6 +263,33 @@ export class AggressiveStrategy implements TradingStrategy {
         return false;
       }
 
+      // Check if price has moved significantly since challenge was created
+      // This helps avoid accepting challenges where we're chasing momentum
+      const priceAtCreation = this.db.getPriceAt(challenge.created_at);
+      if (priceAtCreation) {
+        const priceChangePercent = ((context.currentPrice - priceAtCreation) / priceAtCreation) * 100;
+        const absChange = Math.abs(priceChangePercent);
+
+        if (absChange > this.MAX_PRICE_MOVE_PERCENT) {
+          // Price moved significantly - check if it moved in a favorable direction
+          // If creator bet UP and price went UP, we'd be taking DOWN and might be chasing
+          const priceWentUp = priceChangePercent > 0;
+          const creatorBetUp = challenge.direction === 1;
+
+          // If price moved in creator's favor, skip (we'd be buying into their momentum)
+          if ((creatorBetUp && priceWentUp) || (!creatorBetUp && !priceWentUp)) {
+            this.logger?.debug('Skipping challenge - price already moved in creator favor', {
+              challengeId: challenge.id,
+              priceChange: `${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toFixed(3)}%`,
+              creatorDirection: creatorBetUp ? 'UP' : 'DOWN',
+              maxAllowed: `${this.MAX_PRICE_MOVE_PERCENT}%`,
+            });
+            return false;
+          }
+          // If price moved against creator (in our favor), that's good - continue evaluation
+        }
+      }
+
       // Use the same prediction logic as for creating challenges
       const prompt = buildPredictionPrompt(context);
       const analysis = await this.aiClient.analyze(prompt);
@@ -247,12 +311,15 @@ export class AggressiveStrategy implements TradingStrategy {
       });
 
       // Accept if AI predicts the same direction we'd take and confidence is high enough
-      if (!predictionMatchesOurSide || analysis.confidence < this.MIN_ACCEPT_CONFIDENCE) {
+      const thresholds = this.getConfidenceThresholds();
+      if (!predictionMatchesOurSide || analysis.confidence < thresholds.accept) {
         this.logger?.debug('Skipping challenge', {
           challengeId: challenge.id,
           ourDirection,
           aiPrediction: analysis.direction,
           confidence: analysis.confidence,
+          threshold: thresholds.accept,
+          cautiousMode: this.cautiousMode,
           reason: !predictionMatchesOurSide ? 'direction mismatch' : 'low confidence',
         });
         return false;

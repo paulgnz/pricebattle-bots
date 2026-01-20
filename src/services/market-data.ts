@@ -58,9 +58,9 @@ export class MarketDataService {
   private cacheExpiry: number = 0;
   private lastApiCall: number = 0;
   // Rate limiting config - CoinGecko Demo plan allows 30 calls/min
-  // With 10-min cache and 4 calls per refresh, we use ~0.4 calls/min (very safe)
-  private readonly CACHE_TTL_MS = 600000; // 10 minute cache
-  private readonly MIN_API_INTERVAL_MS = 300000; // Min 5 minutes between API calls
+  // With 5-min cache and 4 calls per refresh, we use ~0.8 calls/min (still safe)
+  private readonly CACHE_TTL_MS = 300000; // 5 minute cache (fresher data for faster decisions)
+  private readonly MIN_API_INTERVAL_MS = 240000; // Min 4 minutes between API calls
   private readonly COINGECKO_RATE_LIMIT_DELAY = 2000; // 2s between requests (safe margin)
 
   constructor(logger?: Logger, apiKey?: string) {

@@ -40,6 +40,7 @@ export class PassiveStrategy implements TradingStrategy {
   private readonly MIN_ACCEPT_CONFIDENCE = 75;
   private readonly MAX_STAKE_PERCENT = 3;
   private readonly CREATE_COOLDOWN_MS = 120000; // 2 minutes between creates (more conservative)
+  private readonly MAX_PRICE_MOVE_PERCENT = 0.3; // More conservative - skip if price moved > 0.3%
   private lastCreateTime = 0;
 
   constructor(
@@ -159,6 +160,29 @@ export class PassiveStrategy implements TradingStrategy {
     context: PredictionContext
   ): Promise<boolean> {
     try {
+      // Check if price has moved significantly since challenge was created
+      const priceAtCreation = this.db.getPriceAt(challenge.created_at);
+      if (priceAtCreation) {
+        const priceChangePercent = ((context.currentPrice - priceAtCreation) / priceAtCreation) * 100;
+        const absChange = Math.abs(priceChangePercent);
+
+        if (absChange > this.MAX_PRICE_MOVE_PERCENT) {
+          const priceWentUp = priceChangePercent > 0;
+          const creatorBetUp = challenge.direction === 1;
+
+          // If price moved in creator's favor, skip
+          if ((creatorBetUp && priceWentUp) || (!creatorBetUp && !priceWentUp)) {
+            this.logger?.debug('Skipping challenge - price already moved in creator favor', {
+              challengeId: challenge.id,
+              priceChange: `${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toFixed(3)}%`,
+              creatorDirection: creatorBetUp ? 'UP' : 'DOWN',
+              maxAllowed: `${this.MAX_PRICE_MOVE_PERCENT}%`,
+            });
+            return false;
+          }
+        }
+      }
+
       // Use the same prediction logic as for creating challenges
       const prompt = buildPredictionPrompt(context);
       const analysis = await this.aiClient.analyze(prompt);
