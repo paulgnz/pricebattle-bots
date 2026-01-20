@@ -39,8 +39,9 @@ export class AggressiveStrategy implements TradingStrategy {
   private readonly MIN_CREATE_CONFIDENCE = 50;
   private readonly MIN_ACCEPT_CONFIDENCE = 50;
   private readonly CREATE_COOLDOWN_MS = 600000; // 10 minutes between creates
+  private readonly MIN_DURATION = 1800; // 30 min minimum - 10 min has 27% win rate!
   private readonly MAX_DURATION = 3600; // 1 hour max for creating/accepting
-  private readonly MAX_ACCEPT_STAKE = 500; // Max 500 XPR when accepting challenges
+  private readonly MAX_ACCEPT_STAKE = 250; // Max 250 XPR when accepting challenges
   private lastCreateTime = 0;
 
   constructor(
@@ -168,8 +169,12 @@ export class AggressiveStrategy implements TradingStrategy {
         this.config.risk.maxPercentPerChallenge
       );
 
-      // Cap duration at MAX_DURATION (1 hour)
-      const duration = Math.min(analysis.recommendedDuration, this.MAX_DURATION);
+      // Enforce duration limits (30 min to 1 hour)
+      // 10 min challenges have 27% win rate - avoid them!
+      const duration = Math.max(
+        this.MIN_DURATION,
+        Math.min(analysis.recommendedDuration, this.MAX_DURATION)
+      );
 
       return {
         direction: analysis.direction === 'UP' ? DIRECTION.UP : DIRECTION.DOWN,
@@ -190,7 +195,17 @@ export class AggressiveStrategy implements TradingStrategy {
     context: PredictionContext
   ): Promise<boolean> {
     try {
-      // Check duration limit - skip challenges longer than 1 hour
+      // Check duration limits - only accept 30 min to 1 hour
+      // 10 min challenges have 27% win rate - avoid them!
+      if (challenge.duration < this.MIN_DURATION) {
+        this.logger?.debug('Skipping challenge - duration too short', {
+          challengeId: challenge.id,
+          duration: challenge.duration,
+          minDuration: this.MIN_DURATION,
+        });
+        return false;
+      }
+
       if (challenge.duration > this.MAX_DURATION) {
         this.logger?.debug('Skipping challenge - duration too long', {
           challengeId: challenge.id,

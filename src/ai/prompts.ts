@@ -63,10 +63,11 @@ BOT PERFORMANCE (cumulative):
 - Ties: ${context.performance.ties}
 - Win Rate: ${context.performance.winRate.toFixed(1)}%
 
-AVAILABLE DURATIONS (max 1 hour):
-- 10 minutes (600s) - PREFERRED: Quick action, good for clear momentum
+AVAILABLE DURATIONS (30 min to 1 hour only):
 - 30 minutes (1800s) - PREFERRED: Best balance of time for price movement
-- 1 hour (3600s) - Maximum allowed, use for established trends only
+- 1 hour (3600s) - Use for established trends with high confidence
+
+NOTE: 10-minute challenges are NOT allowed - historical data shows 27% win rate on short timeframes due to noise.
 
 ANALYSIS GUIDELINES:
 1. Use RSI to identify overbought (>70) or oversold (<30) conditions
@@ -74,7 +75,7 @@ ANALYSIS GUIDELINES:
 3. Look at MACD signal (EMA12 vs EMA26) for momentum
 4. Consider the 1h and 24h trend alignment
 5. Factor in recent price changes across timeframes
-6. PREFER 10-30 minute durations to keep the game moving
+6. PREFER 30 minute duration - it has 50% win rate vs 27% for 10 min
 7. Only use 1 hour duration if you have very high confidence in an established trend
 
 TASK:
@@ -87,7 +88,7 @@ IMPORTANT: Respond with ONLY a valid JSON object, no other text:
   "direction": "UP" | "DOWN" | "NEUTRAL",
   "confidence": <0-100>,
   "reasoning": "<2-3 sentences explaining your analysis based on the indicators, trends, and price action>",
-  "duration_seconds": <recommended duration: 600, 1800, or 3600 - prefer 600 or 1800>,
+  "duration_seconds": <recommended duration: 1800 or 3600 - prefer 1800>,
   "stake_percent": <1-10, percentage of available funds to risk based on confidence>
 }`;
 }
