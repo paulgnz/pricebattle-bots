@@ -46,6 +46,7 @@ export class AggressiveStrategy implements TradingStrategy {
   private readonly MIN_DURATION = 1800; // 30 min minimum - 10 min has 27% win rate!
   private readonly MAX_DURATION = 3600; // 1 hour max for creating/accepting
   private readonly MAX_ACCEPT_STAKE = 250; // Max 250 XPR when accepting challenges
+  private readonly MAX_CREATE_STAKE = 250; // Max 250 XPR when creating challenges
   private readonly MAX_PRICE_MOVE_PERCENT = 0.5; // Skip if price moved > 0.5% since challenge created
   private lastCreateTime = 0;
   private cautiousMode = false;
@@ -434,6 +435,9 @@ export class AggressiveStrategy implements TradingStrategy {
       // Use configured max percentage (default 10%)
       const stakePercent = Math.min(decision.stakePercent, this.config.risk.maxPercentPerChallenge);
       let stakeAmount = Math.floor(availableBalance * (stakePercent / 100));
+
+      // Cap at MAX_CREATE_STAKE
+      stakeAmount = Math.min(stakeAmount, this.MAX_CREATE_STAKE);
 
       // Round down to nearest 100 XPR for cleaner amounts
       stakeAmount = Math.floor(stakeAmount / 100) * 100;

@@ -39,6 +39,7 @@ export class PassiveStrategy implements TradingStrategy {
   private readonly MIN_CREATE_CONFIDENCE = 75;
   private readonly MIN_ACCEPT_CONFIDENCE = 75;
   private readonly MAX_STAKE_PERCENT = 3;
+  private readonly MAX_CREATE_STAKE = 100; // Max 100 XPR when creating challenges (conservative)
   private readonly CREATE_COOLDOWN_MS = 120000; // 2 minutes between creates (more conservative)
   private readonly MAX_PRICE_MOVE_PERCENT = 0.3; // More conservative - skip if price moved > 0.3%
   private lastCreateTime = 0;
@@ -314,6 +315,9 @@ export class PassiveStrategy implements TradingStrategy {
       // Use conservative stake (capped at MAX_STAKE_PERCENT)
       const stakePercent = Math.min(decision.stakePercent, this.MAX_STAKE_PERCENT, this.config.risk.maxPercentPerChallenge);
       let stakeAmount = Math.floor(availableBalance * (stakePercent / 100));
+
+      // Cap at MAX_CREATE_STAKE
+      stakeAmount = Math.min(stakeAmount, this.MAX_CREATE_STAKE);
 
       // Round down to nearest 100 XPR for cleaner amounts
       stakeAmount = Math.floor(stakeAmount / 100) * 100;
