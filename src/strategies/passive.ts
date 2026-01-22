@@ -42,6 +42,8 @@ export class PassiveStrategy implements TradingStrategy {
   private readonly MAX_CREATE_STAKE = 100; // Max 100 XPR when creating challenges (conservative)
   private readonly CREATE_COOLDOWN_MS = 120000; // 2 minutes between creates (more conservative)
   private readonly MAX_PRICE_MOVE_PERCENT = 0.3; // More conservative - skip if price moved > 0.3%
+  private readonly MIN_DURATION = 14400; // 4 hours minimum - longer timeframes during quiet periods
+  private readonly MAX_DURATION = 86400; // 24 hours max
   private lastCreateTime = 0;
 
   constructor(
@@ -142,9 +144,15 @@ export class PassiveStrategy implements TradingStrategy {
         this.config.risk.maxPercentPerChallenge
       );
 
+      // Enforce duration limits (4 hours to 24 hours)
+      const duration = Math.max(
+        this.MIN_DURATION,
+        Math.min(analysis.recommendedDuration, this.MAX_DURATION)
+      );
+
       return {
         direction: analysis.direction === 'UP' ? DIRECTION.UP : DIRECTION.DOWN,
-        duration: analysis.recommendedDuration,
+        duration,
         stakePercent,
         reasoning: analysis.reasoning,
       };
@@ -161,6 +169,25 @@ export class PassiveStrategy implements TradingStrategy {
     context: PredictionContext
   ): Promise<boolean> {
     try {
+      // Check duration limits - only accept 4 hour to 24 hour challenges
+      if (challenge.duration < this.MIN_DURATION) {
+        this.logger?.debug('Skipping challenge - duration too short', {
+          challengeId: challenge.id,
+          duration: challenge.duration,
+          minDuration: this.MIN_DURATION,
+        });
+        return false;
+      }
+
+      if (challenge.duration > this.MAX_DURATION) {
+        this.logger?.debug('Skipping challenge - duration too long', {
+          challengeId: challenge.id,
+          duration: challenge.duration,
+          maxDuration: this.MAX_DURATION,
+        });
+        return false;
+      }
+
       // Check if price has moved significantly since challenge was created
       const priceAtCreation = this.db.getPriceAt(challenge.created_at);
       if (priceAtCreation) {
