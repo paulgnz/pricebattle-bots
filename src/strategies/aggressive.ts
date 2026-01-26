@@ -42,7 +42,7 @@ export class AggressiveStrategy implements TradingStrategy {
   private readonly CAUTIOUS_CREATE_CONFIDENCE = 75;
   private readonly CAUTIOUS_ACCEPT_CONFIDENCE = 75;
   private readonly CAUTIOUS_THRESHOLD = 0.7; // Switch to cautious at 70% of daily loss limit
-  private readonly CREATE_COOLDOWN_MS = 600000; // 10 minutes between creates
+  private readonly CREATE_COOLDOWN_MS = 3600000; // 1 hour between creates
   private readonly MIN_DURATION = 14400; // 4 hours minimum - longer timeframes during quiet periods
   private readonly MAX_DURATION = 86400; // 24 hours max for creating/accepting
   private readonly MAX_ACCEPT_STAKE = 250; // Max 250 XPR when accepting challenges
